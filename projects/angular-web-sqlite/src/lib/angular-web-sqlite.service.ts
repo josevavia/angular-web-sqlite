@@ -6,7 +6,7 @@
 import { Injectable } from '@angular/core';
 
 export interface Message {
-  type: 'init' | 'executeSql' | 'batchSql' | 'batchReturnSql';
+  type: 'init' | 'executeSql' | 'batchSql' | 'batchReturnSql' | 'importDb';
   id: string;
   flags?: string;
   filename?: string;
@@ -74,6 +74,22 @@ export class WebSqlite {
   }
 
   /**
+   * Funcion para transacciones sin return
+   */
+  public async importDb(filename: string, byteArray: ArrayBuffer) {
+    await this.waitForInitialization();
+    const batchSql: Message =
+      { type: 'importDb', filename: this.filename, param: byteArray, id: this.generateGuid() };
+    this.worker.postMessage(batchSql);
+    return new Promise<any>((resolve, reject) => {
+      this.queuedPromises[batchSql.id] = {
+        resolve,
+        reject
+      };
+    });
+  }
+
+  /**
    * Funcion que devuelve la solucion a multiples transacciones
    */
   public async batchReturnSql(sqls: any[]) {
@@ -108,6 +124,11 @@ export class WebSqlite {
             return promise.reject(sqliteMessage.error);
           }
           return promise.resolve({ rows: sqliteMessage.rows });
+        case 'importDb':
+          if (sqliteMessage.error) {
+            return promise.reject(sqliteMessage.error);
+          }
+          return promise.resolve(sqliteMessage.filename);
       }
     }
   }

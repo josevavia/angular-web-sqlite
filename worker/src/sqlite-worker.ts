@@ -135,5 +135,29 @@ self.onmessage = async (messageEvent: MessageEvent) => {
     }
   }
 
+  /**************************** IMPORT DB ************************/
+  if (sqliteMessage.type === 'importDb') {
+    try {
+      if (dbs[sqliteMessage.filename]) {
+        throw new Error('La base de datos ya ha sido iniciada');
+      }
+      sqlite3InitModule({
+        print: log,
+        printErr: error,
+      }).then((sqlite3) => {
+        try {
+          dbs[sqliteMessage.filename] = new sqlite3.oo1.OpfsDb.importDb(sqliteMessage.filename, sqliteMessage.param);
+        } catch (err) {
+          sqliteMessage.error = err;
+        } finally {
+          self.postMessage(sqliteMessage);
+        }
+      });
+    } catch (err) {
+      sqliteMessage.error = err;
+      self.postMessage(sqliteMessage);
+    }
+  }
+
 };
 
